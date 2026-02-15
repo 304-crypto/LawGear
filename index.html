@@ -1,523 +1,807 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Space Defender</title>
+    <title>Law Gear: 머니사이트 빌드업 로드맵 (Pacemaker Edition)</title>
+    <!-- 파비콘 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234F46E5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z'/><path d='m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z'/><path d='M7 21h10'/><path d='M12 3v18'/><path d='M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #0f172a; /* Slate 900 */
-            touch-action: none; /* Prevent zoom/scroll on mobile */
-        }
-        canvas {
-            display: block;
-        }
-        .neon-text {
-            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #a855f7, 0 0 30px #a855f7, 0 0 40px #a855f7;
-        }
-        .ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 1rem;
-        }
-        .interactive {
-            pointer-events: auto;
-        }
-        /* Mobile Controls */
-        .mobile-controls {
-            display: none;
-        }
-        @media (max-width: 768px) {
-            .mobile-controls {
-                display: flex;
-                width: 100%;
-                justify-content: space-between;
-                padding-bottom: 2rem;
-                pointer-events: auto;
-            }
-            .control-btn {
-                background: rgba(255, 255, 255, 0.1);
-                border: 2px solid rgba(255, 255, 255, 0.3);
-                border-radius: 50%;
-                width: 60px;
-                height: 60px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 24px;
-                user-select: none;
-            }
-            .control-btn:active {
-                background: rgba(255, 255, 255, 0.3);
-            }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .card-hover { transition: all 0.2s ease-in-out; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Level Badge Animation */
+        @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); } 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+        .level-badge { animation: pulse-ring 2s infinite; }
     </style>
 </head>
-<body>
+<body class="flex flex-col min-h-screen bg-slate-50">
 
-    <!-- Game Container -->
-    <div id="game-container" class="relative w-full h-screen">
-        <canvas id="gameCanvas"></canvas>
-
-        <!-- UI Overlay -->
-        <div class="ui-overlay">
-            <!-- Top HUD -->
-            <div class="flex justify-between items-start w-full">
-                <div class="text-white font-mono">
-                    <div class="text-sm text-gray-400">SCORE</div>
-                    <div id="scoreDisplay" class="text-2xl font-bold neon-text">0</div>
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 px-4 lg:px-8 h-16 flex items-center justify-between card-shadow">
+        <div class="flex items-center gap-3 cursor-pointer group" onclick="switchView('dashboard')">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:bg-indigo-700 transition-colors">
+                <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <h1 class="text-xl font-bold text-slate-800 hidden md:block group-hover:text-indigo-700 transition-colors">Law Gear <span class="text-indigo-600">Pacemaker</span></h1>
+        </div>
+        <div class="flex items-center gap-2 md:gap-4">
+            <!-- Global Progress (Desktop) -->
+            <div class="hidden lg:flex items-center gap-2 text-sm font-medium text-slate-600 mr-4">
+                <span>Total Exp:</span>
+                <div class="w-32 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="globalProgressBar" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000" style="width: 0%"></div>
                 </div>
-                <div class="text-white font-mono text-right">
-                    <div class="text-sm text-gray-400">LIVES</div>
-                    <div id="livesDisplay" class="text-2xl font-bold text-red-400">❤️❤️❤️</div>
+                <span id="globalProgressText" class="text-indigo-600 font-bold">0%</span>
+            </div>
+
+            <!-- Mobile/Desktop Nav -->
+            <button onclick="switchView('dashboard')" class="nav-btn bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg font-bold text-sm hover:bg-indigo-100 transition-colors flex items-center gap-2" title="홈">
+                <i class="fa-solid fa-house"></i> <span class="hidden sm:inline">홈</span>
+            </button>
+            <button onclick="switchView('roadmap')" class="nav-btn text-slate-600 hover:text-indigo-600 px-3 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2" title="로드맵">
+                <i class="fa-solid fa-map"></i> <span class="hidden sm:inline">로드맵</span>
+            </button>
+            <button onclick="switchView('library')" class="nav-btn text-slate-600 hover:text-indigo-600 px-3 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2" title="전체 목록">
+                <i class="fa-solid fa-list"></i> <span class="hidden sm:inline">라이브러리</span>
+            </button>
+            <button onclick="switchView('settings')" class="nav-btn text-slate-400 hover:text-slate-600 px-3 py-2 transition-colors" title="설정/캐시삭제">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 lg:p-8">
+
+        <!-- VIEW 1: DASHBOARD (GAMIFIED) -->
+        <div id="dashboard-view" class="space-y-8 animate-fade-in">
+            
+            <!-- Top Status Bar: Level & Money Power -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 1. My Level Card -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 card-shadow flex items-center gap-6 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-50 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                    <div class="relative z-10">
+                        <div id="levelBadge" class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center text-3xl shadow-inner border-4 border-slate-200 text-slate-400">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 z-10">
+                        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Current Rank</p>
+                        <h2 id="currentLevelName" class="text-2xl font-bold text-slate-800">초보 블로거</h2>
+                        <div class="mt-2">
+                            <div class="flex justify-between text-xs font-medium text-slate-500 mb-1">
+                                <span>다음 레벨까지</span>
+                                <span id="expText">0 / 20 posts</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="levelProgressBar" class="h-full bg-indigo-500 rounded-full transition-all duration-700" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Revenue Power Card -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 card-shadow flex flex-col justify-center relative overflow-hidden">
+                    <div class="absolute right-0 bottom-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-10 -mb-10"></div>
+                    <div class="flex justify-between items-start z-10">
+                        <div>
+                            <p class="text-xs font-bold text-emerald-600 uppercase mb-1"><i class="fa-solid fa-bolt mr-1"></i>머니 파워 (Money Power)</p>
+                            <h3 class="text-3xl font-bold text-slate-800" id="moneyPowerScore">0</h3>
+                            <p class="text-xs text-slate-400 mt-1">발행된 글의 수익 가치 총합</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-4xl text-emerald-200"><i class="fa-solid fa-chart-line"></i></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Recent Activity Log -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 card-shadow flex flex-col relative overflow-hidden">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase mb-3"><i class="fa-solid fa-clock-rotate-left mr-1"></i>최근 정복한 퀘스트</h3>
+                    <div id="recentActivityList" class="flex-1 overflow-y-auto space-y-3 max-h-24 pr-2">
+                        <p class="text-xs text-slate-400 italic">아직 활동 내역이 없습니다.</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Center Messages (Start/Game Over) -->
-            <div id="menuScreen" class="absolute inset-0 flex flex-col items-center justify-center interactive bg-slate-900/80 backdrop-blur-sm z-10">
-                <h1 class="text-5xl md:text-7xl font-bold text-white mb-4 neon-text text-center tracking-tighter">NEON<br>DEFENDER</h1>
-                <p class="text-gray-300 mb-8 text-center max-w-md px-4">Use Arrow Keys or Touch to Move. Space or Tap to Shoot.</p>
-                <button id="startBtn" class="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-full shadow-[0_0_15px_rgba(168,85,247,0.5)] transition-all transform hover:scale-105 active:scale-95">
-                    START MISSION
-                </button>
-            </div>
-
-            <div id="gameOverScreen" class="hidden absolute inset-0 flex flex-col items-center justify-center interactive bg-red-900/90 backdrop-blur-md z-20">
-                <h2 class="text-6xl font-bold text-white mb-2 text-shadow-red">GAME OVER</h2>
-                <p class="text-xl text-white mb-6">Final Score: <span id="finalScore">0</span></p>
-                <button id="restartBtn" class="px-8 py-3 bg-white text-red-900 font-bold rounded-full hover:bg-gray-200 transition-all transform hover:scale-105">
-                    TRY AGAIN
-                </button>
-            </div>
-
-            <!-- Mobile Controls -->
-            <div class="mobile-controls">
-                <div class="flex gap-4">
-                    <div id="btnLeft" class="control-btn">←</div>
-                    <div id="btnRight" class="control-btn">→</div>
+            <!-- Main Content Stats -->
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2 mt-4">
+                <i class="fa-solid fa-layer-group text-indigo-500"></i> 분야별 점령 현황
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-amber-400 transition-colors cursor-pointer group" onclick="filterLibrary('Traffic')">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded">TRAFFIC</span>
+                        <i class="fa-solid fa-car text-amber-200 text-xl group-hover:text-amber-500 transition-colors"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-800" id="stat-traffic">0/40</div>
+                    <div class="text-xs text-slate-400 mt-1">교통/사고</div>
                 </div>
-                <div id="btnFire" class="control-btn bg-red-500/20 border-red-500/50">🔥</div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-indigo-400 transition-colors cursor-pointer group" onclick="filterLibrary('Debt')">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">DEBT</span>
+                        <i class="fa-solid fa-file-invoice-dollar text-indigo-200 text-xl group-hover:text-indigo-500 transition-colors"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-800" id="stat-debt">0/40</div>
+                    <div class="text-xs text-slate-400 mt-1">빚/회생</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-emerald-400 transition-colors cursor-pointer group" onclick="filterLibrary('Housing')">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">HOUSING</span>
+                        <i class="fa-solid fa-house-chimney text-emerald-200 text-xl group-hover:text-emerald-500 transition-colors"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-800" id="stat-housing">0/40</div>
+                    <div class="text-xs text-slate-400 mt-1">주거/생활</div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 hover:border-rose-400 transition-colors cursor-pointer group" onclick="filterLibrary('Crime')">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded">CRIME</span>
+                        <i class="fa-solid fa-user-shield text-rose-200 text-xl group-hover:text-rose-500 transition-colors"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-800" id="stat-crime">0/40</div>
+                    <div class="text-xs text-slate-400 mt-1">사기/범죄</div>
+                </div>
+            </div>
+
+            <!-- Analysis Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 card-shadow">
+                    <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Strategic Radar</h3>
+                    <div class="chart-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 card-shadow">
+                    <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Content Structure</h3>
+                    <div id="sunburstChart" class="w-full h-[300px] md:h-[400px]"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ROADMAP -->
+        <div id="roadmap-view" class="hidden space-y-8 animate-fade-in">
+            <!-- Today's Mission Banner -->
+            <div class="bg-gradient-to-r from-indigo-900 to-slate-800 rounded-2xl p-6 md:p-10 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
+                <div class="flex-1 space-y-4">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-bold uppercase tracking-wider">
+                        <i class="fa-solid fa-flag-checkered"></i> Next Step
+                    </div>
+                    <h2 id="currentPhaseTitle" class="text-2xl md:text-3xl font-bold leading-tight">Lv.1 기초 공사</h2>
+                    <p id="currentPhaseDesc" class="text-slate-300 text-sm md:text-base">블로그 지수를 쌓는 단계입니다. 검색량은 적지만 전환이 쉬운 생활 법률 키워드로 '유효타'를 만드세요.</p>
+                    <div class="flex gap-3 pt-2">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-slate-400 uppercase">발행된 글</span>
+                            <span class="text-2xl font-bold" id="totalPublishedCount">0</span>
+                        </div>
+                        <div class="w-px h-10 bg-slate-600 mx-2"></div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-slate-400 uppercase">남은 퀘스트</span>
+                            <span class="text-2xl font-bold text-amber-400" id="remainingCount">160</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recommendation Card -->
+                <div class="w-full md:w-80 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 relative group hover:bg-white/15 transition-all cursor-pointer" onclick="openNextMission()">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">🔥 추천 글감</span>
+                        <button onclick="sendToTelegram(event)" class="text-white hover:text-sky-400 transition-colors" title="텔레그램 전송"><i class="fa-brands fa-telegram text-xl"></i></button>
+                    </div>
+                    <h3 id="nextMissionTitle" class="text-base font-bold text-white mb-1 leading-snug line-clamp-2">로딩중...</h3>
+                    <p id="nextMissionHook" class="text-xs text-slate-300 line-clamp-1 italic">"데이터를 불러오는 중입니다..."</p>
+                    <div class="mt-3 pt-3 border-t border-white/10 flex justify-between items-center">
+                        <span id="nextMissionLeg" class="text-xs font-medium text-indigo-200 bg-indigo-900/50 px-2 py-1 rounded">-</span>
+                        <span class="text-xs text-amber-300 font-bold hover:underline">작성하러 가기 &rarr;</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phases Grid -->
+            <div class="grid grid-cols-1 gap-8 relative pb-20">
+                <div class="hidden md:block absolute left-8 top-8 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 via-slate-300 to-slate-100"></div>
+                <!-- Phase 1 -->
+                <div class="roadmap-section relative pl-0 md:pl-20">
+                    <div class="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white border-4 border-indigo-500 rounded-full items-center justify-center z-10 shadow-md">
+                        <span class="text-xl font-bold text-indigo-700">1</span>
+                    </div>
+                    <div class="mb-4"><h3 class="text-xl font-bold text-slate-800">Lv.1 기초 다지기 <span class="text-sm font-normal text-slate-500 ml-2">검색 유입의 씨앗 (글 1~40)</span></h3></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="phase1-grid"></div>
+                </div>
+                <!-- Phase 2 -->
+                <div class="roadmap-section relative pl-0 md:pl-20">
+                    <div class="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white border-4 border-emerald-500 rounded-full items-center justify-center z-10 shadow-md">
+                        <span class="text-xl font-bold text-emerald-700">2</span>
+                    </div>
+                    <div class="mb-4"><h3 class="text-xl font-bold text-slate-800">Lv.2 트래픽 폭발 <span class="text-sm font-normal text-slate-500 ml-2">이슈성 키워드 공략 (글 41~80)</span></h3></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="phase2-grid"></div>
+                </div>
+                <!-- Phase 3 -->
+                <div class="roadmap-section relative pl-0 md:pl-20">
+                    <div class="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white border-4 border-amber-500 rounded-full items-center justify-center z-10 shadow-md">
+                        <span class="text-xl font-bold text-amber-700">3</span>
+                    </div>
+                    <div class="mb-4"><h3 class="text-xl font-bold text-slate-800">Lv.3 신뢰 구축 <span class="text-sm font-normal text-slate-500 ml-2">전문가 포지셔닝 (글 81~120)</span></h3></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="phase3-grid"></div>
+                </div>
+                <!-- Phase 4 -->
+                <div class="roadmap-section relative pl-0 md:pl-20">
+                    <div class="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white border-4 border-rose-500 rounded-full items-center justify-center z-10 shadow-md">
+                        <span class="text-xl font-bold text-rose-700">4</span>
+                    </div>
+                    <div class="mb-4"><h3 class="text-xl font-bold text-slate-800">Lv.4 수익 사냥 <span class="text-sm font-normal text-slate-500 ml-2">CPA 극대화 (글 121~160)</span></h3></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="phase4-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: LIBRARY -->
+        <div id="library-view" class="hidden space-y-6 animate-fade-in">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 card-shadow sticky top-20 z-40">
+                <div class="flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
+                        <button class="filter-btn active bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold shrink-0" data-filter="all">전체</button>
+                        <button class="filter-btn bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-medium hover:bg-amber-50 shrink-0" data-filter="Traffic">교통</button>
+                        <button class="filter-btn bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-medium hover:bg-indigo-50 shrink-0" data-filter="Debt">빚</button>
+                        <button class="filter-btn bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-medium hover:bg-emerald-50 shrink-0" data-filter="Housing">주거</button>
+                        <button class="filter-btn bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-medium hover:bg-rose-50 shrink-0" data-filter="Crime">범죄</button>
+                    </div>
+                    <div class="relative w-full md:w-96">
+                        <input type="text" id="searchInput" placeholder="키워드 검색..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+                        <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i>
+                    </div>
+                </div>
+            </div>
+            <div id="fullLibraryGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-20">
+                <!-- JS Populated -->
+            </div>
+        </div>
+
+        <!-- VIEW 4: SETTINGS -->
+        <div id="settings-view" class="hidden space-y-8 animate-fade-in max-w-2xl mx-auto mt-10">
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-slate-200 text-center">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-sliders text-2xl text-slate-500"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">설정 및 데이터 관리</h2>
+                <p class="text-slate-500 mb-8 text-sm">작업 내역 백업 또는 초기화를 수행할 수 있습니다.</p>
+                
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="exportData()" class="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all group">
+                            <i class="fa-solid fa-download text-xl text-indigo-500 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold text-slate-700 text-sm">백업 파일 저장</span>
+                        </button>
+                        <button onclick="document.getElementById('importFile').click()" class="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all group">
+                            <i class="fa-solid fa-upload text-xl text-emerald-500 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold text-slate-700 text-sm">백업 파일 복원</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Clear Cache Button -->
+                    <button onclick="resetData()" class="flex items-center justify-center p-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 hover:border-rose-400 transition-all group mt-4">
+                        <i class="fa-solid fa-trash-can text-lg text-rose-500 mr-2 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-left">
+                            <span class="font-bold text-rose-700 block text-sm">캐시 삭제 (데이터 초기화)</span>
+                            <span class="text-xs text-rose-500">브라우저에 저장된 모든 발행 기록을 삭제합니다.</span>
+                        </div>
+                    </button>
+                </div>
+                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(this)">
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-slate-900/80 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300 flex flex-col" id="modalContent">
+            <div class="relative bg-slate-800 p-6 shrink-0">
+                <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors text-xl"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex items-center gap-2 mb-3">
+                    <span id="m-leg" class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-700 text-white">CATEGORY</span>
+                    <span id="m-phase" class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500 text-white">LV.1 BASE</span>
+                </div>
+                <h2 id="m-title" class="text-lg md:text-xl font-bold text-white leading-snug mb-4">Title Placeholder</h2>
+                <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded-lg border border-slate-600">
+                    <div class="flex-1 min-w-0">
+                        <div id="m-copy-text" class="text-amber-300 font-mono text-xs md:text-sm truncate">Title /// Keyword</div>
+                    </div>
+                    <button onclick="copyToClipboard('m-copy-text')" class="bg-amber-500 hover:bg-amber-400 text-indigo-900 text-xs font-bold px-3 py-2 rounded transition-colors whitespace-nowrap">복사</button>
+                </div>
+            </div>
+            <div class="p-6 space-y-6 overflow-y-auto">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                    <div><h4 class="text-sm font-bold text-slate-700">발행 완료 체크</h4><p class="text-xs text-slate-500">체크 시 경험치와 머니 파워가 상승합니다.</p></div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="m-published-check" class="sr-only peer" onchange="togglePublishStatus()">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+                <!-- URL & Affiliate Input -->
+                <div id="m-url-section" class="hidden space-y-3 animate-fade-in bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">발행 URL (내 블로그)</label>
+                        <input type="text" id="m-url-input" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm outline-none" onchange="savePostDetails()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-600 mb-1">수익 제휴 링크 (CPA/CPS)</label>
+                        <input type="text" id="m-affiliate-input" class="w-full bg-white border border-emerald-300 rounded-lg p-2 text-sm outline-none" onchange="savePostDetails()">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><h4 class="text-xs font-bold text-slate-400 uppercase mb-1">Keyword</h4><p id="m-keyword" class="text-base font-bold text-slate-800">-</p></div>
+                    <div><h4 class="text-xs font-bold text-slate-400 uppercase mb-1">Hook</h4><p id="m-hook" class="text-sm text-slate-600 italic border-l-2 border-amber-400 pl-3">-</p></div>
+                </div>
+                <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                    <h4 class="text-indigo-700 text-sm font-bold mb-2">공략 포인트</h4><p id="m-body" class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">-</p>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Script -->
     <script>
-        /**
-         * Game Constants & State
-         */
-        const CONFIG = {
-            playerSpeed: 7,
-            bulletSpeed: 15,
-            enemySpeedBase: 2,
-            enemySpawnRate: 1000,
-            particleLife: 30,
-            colors: {
-                player: '#a855f7', // Purple
-                bullet: '#38bdf8', // Sky Blue
-                enemy: '#ef4444',  // Red
-                particle: '#fbbf24' // Amber
-            }
+        // Data & Logic
+        const legs = [
+            { id: 'Traffic', name: '교통/사고', color: 'amber', icon: 'fa-car' },
+            { id: 'Debt', name: '빚/회생', color: 'indigo', icon: 'fa-file-invoice-dollar' },
+            { id: 'Housing', name: '주거/생활', color: 'emerald', icon: 'fa-house-chimney' },
+            { id: 'Crime', name: '사기/범죄', color: 'rose', icon: 'fa-user-shield' }
+        ];
+
+        // Content Data (160 items)
+        const contentTemplates = {
+            Traffic: [
+                { t: "문콕하고 도망간 차 잡는법 CCTV 확보부터 경찰 신고까지", k: "문콕보상", p: 1 },
+                { t: "주차장 뺑소니 물피도주 벌금 20만원? 합의금 팁", k: "물피도주신고", p: 1 },
+                { t: "이중주차 차 밀다가 쿵! 과실 비율 판례 총정리", k: "이중주차사고", p: 1 },
+                { t: "고속도로 1차로 정속주행 신고 방법 (상품권 발송)", k: "정속주행신고", p: 2 },
+                { t: "교통사고 합의요령 통원치료만으로 200만원 받기", k: "교통사고합의금", p: 4 },
+                { t: "12대 중과실 신호위반 사고 형사합의금 시세", k: "12대중과실", p: 3 },
+                { t: "음주운전 방조죄 동승자 처벌 기준과 벌금", k: "음주운전방조", p: 2 },
+                { t: "민식이법 스쿨존 사고 벌금 500만원 피하는 법", k: "민식이법", p: 3 },
+                { t: "전동 킥보드 사고 보험 처리 및 합의금 가이드", k: "킥보드사고", p: 2 },
+                { t: "자전거 사고 일상생활배상책임보험 처리 노하우", k: "자전거사고", p: 1 }
+            ],
+            Debt: [
+                { t: "빚 독촉 전화 안 받는 법: 불법추심 신고하고 보상받기", k: "불법추심대응", p: 1 },
+                { t: "통장압류 해제 방법: 최저생계비 185만원 지키기", k: "통장압류", p: 1 },
+                { t: "개인회생 신청자격: 월급 200만원도 탕감 가능할까?", k: "개인회생자격", p: 3 },
+                { t: "주식 코인 빚 개인회생 가능할까? 최신 법원 판례", k: "주식빚탕감", p: 3 },
+                { t: "개인회생 금지명령 기각 사유와 재신청 전략", k: "금지명령", p: 3 },
+                { t: "정부지원 서민대출 햇살론 자격 조건 및 부결 대안", k: "햇살론", p: 4 },
+                { t: "카드값 리볼빙의 함정: 신용등급 하락 막는 법", k: "리볼빙해지", p: 2 },
+                { t: "핸드폰 요금 미납 시 발신정지와 소액결제 차단", k: "통신연체", p: 1 },
+                { t: "상속포기 한정승인 차이점 및 비용 비교", k: "상속포기", p: 2 },
+                { t: "개인파산 면책 후 신용카드 발급 시기 정리", k: "면책후신용카드", p: 4 }
+            ],
+            Housing: [
+                { t: "층간소음 법적 기준 데시벨과 분쟁조정위원회 신청", k: "층간소음기준", p: 1 },
+                { t: "아랫집 누수 책임: 일상생활배상책임보험 처리 꿀팁", k: "일상생활배상책임보험", p: 4 },
+                { t: "전세 보증금 반환 내용증명 작성법 (양식 첨부)", k: "전세보증금반환", p: 2 },
+                { t: "전세사기 예방: 등기부등본 을구 근저당 계산법", k: "전세사기예방", p: 1 },
+                { t: "월세 이사 나갈 때 도배 장판 원상복구 기준", k: "원상복구의무", p: 2 },
+                { t: "묵시적 갱신 후 해지 통보: 중개수수료 누가 낼까?", k: "묵시적갱신", p: 3 },
+                { t: "장기수선충당금 반환: 이사할 때 꼭 챙겨야 할 돈", k: "장기수선충당금", p: 1 },
+                { t: "아파트 화장실 담배 냄새 층간흡연 대처법", k: "층간흡연", p: 1 },
+                { t: "보일러 고장 수리비 집주인 vs 세입자 책임 소재", k: "보일러수리", p: 2 },
+                { t: "행복주택 청년 버팀목 전세자금 대출 조건 정리", k: "버팀목전세", p: 4 }
+            ],
+            Crime: [
+                { t: "보이스피싱 지급정지 골든타임 30분 대처 매뉴얼", k: "보이스피싱신고", p: 4 },
+                { t: "당근마켓 사기 신고 방법: 더치트 조회부터 경찰서까지", k: "중고거래사기", p: 1 },
+                { t: "스미싱 문자 클릭했을 때 해킹 확인 및 초기화 방법", k: "스미싱문자", p: 2 },
+                { t: "형사 배상명령신청서 작성법: 민사 없이 돈 받는 법", k: "배상명령신청", p: 3 },
+                { t: "통화녹음 법적 효력: 상대방 동의 없는 녹취는 불법?", k: "통화녹음합법", p: 2 },
+                { t: "몸캠피싱 협박 무대응이 답? 영상 유포 막는 법", k: "몸캠피싱대처", p: 4 },
+                { t: "로맨스 스캠 사기: 인스타 외국인 의사의 정체", k: "로맨스스캠", p: 2 },
+                { t: "롤 모욕죄 고소 성립 요건: 특정성 공연성 분석", k: "롤고소", p: 1 },
+                { t: "상간녀 소송 증거 수집과 위자료 청구 금액", k: "상간녀소송", p: 4 },
+                { t: "명예훼손죄 벌금 기준: 사이버 모욕과 사실적시", k: "사이버명예훼손", p: 3 }
+            ]
         };
 
-        let canvas, ctx;
-        let animationId;
-        let lastTime = 0;
-        let score = 0;
-        let lives = 3;
-        let isGameOver = false;
-        let isPaused = true;
-        let lastShotTime = 0;
-
-        // Entities
-        let player = { x: 0, y: 0, width: 40, height: 40, color: CONFIG.colors.player };
-        let bullets = [];
-        let enemies = [];
-        let particles = [];
-        let stars = [];
-
-        // Inputs
-        const keys = {
-            ArrowLeft: false,
-            ArrowRight: false,
-            Space: false
-        };
-
-        /**
-         * Initialization
-         * Wrapped in window.onload to fix "Cannot set properties of null" error
-         */
-        window.addEventListener('load', () => {
-            init();
-        });
-
-        function init() {
-            // Setup Canvas
-            canvas = document.getElementById('gameCanvas');
-            ctx = canvas.getContext('2d');
-            
-            // Handle Resize
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-
-            // Generate Starfield background
-            createStars();
-
-            // Setup Event Listeners
-            setupInput();
-
-            // Initial UI Update
-            updateUI();
-
-            // Setup Menu Buttons
-            const startBtn = document.getElementById('startBtn');
-            const restartBtn = document.getElementById('restartBtn');
-            
-            if(startBtn) startBtn.addEventListener('click', startGame);
-            if(restartBtn) restartBtn.addEventListener('click', resetGame);
-
-            // Start Animation Loop (Background only initially)
-            requestAnimationFrame(gameLoop);
-        }
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            // Reposition player if needed
-            player.y = canvas.height - 100;
-            if (player.x > canvas.width) player.x = canvas.width / 2;
-        }
-
-        function createStars() {
-            stars = [];
-            for (let i = 0; i < 100; i++) {
-                stars.push({
-                    x: Math.random() * window.innerWidth,
-                    y: Math.random() * window.innerHeight,
-                    size: Math.random() * 2,
-                    speed: Math.random() * 0.5 + 0.1
+        const generateDb = () => {
+            let data = [];
+            let id = 1;
+            legs.forEach(leg => {
+                const templates = contentTemplates[leg.id];
+                templates.forEach((tmpl, idx) => {
+                    data.push(createItem(id++, leg.id, tmpl.t, tmpl.k, tmpl.p));
+                    data.push(createItem(id++, leg.id, `[사례] ${tmpl.k} 실제 해결 후기 및 판례 분석`, tmpl.k + "후기", Math.min(4, tmpl.p + 1)));
+                    data.push(createItem(id++, leg.id, `${tmpl.k} 자주 묻는 질문 BEST 5 총정리`, tmpl.k + "질문", Math.max(1, tmpl.p - 1)));
+                    data.push(createItem(id++, leg.id, `2026년 ${tmpl.k} 법 개정 사항 및 주의할 점`, tmpl.k + "법개정", 3));
                 });
-            }
-        }
-
-        function startGame() {
-            const menu = document.getElementById('menuScreen');
-            if (menu) menu.classList.add('hidden');
-            
-            isPaused = false;
-            isGameOver = false;
-            score = 0;
-            lives = 3;
-            enemies = [];
-            bullets = [];
-            particles = [];
-            
-            // Center Player
-            player.x = canvas.width / 2 - player.width / 2;
-            player.y = canvas.height - 100;
-
-            updateUI();
-            
-            // Spawn Enemy Loop
-            spawnEnemy();
-        }
-
-        function resetGame() {
-            const gameOverScreen = document.getElementById('gameOverScreen');
-            if (gameOverScreen) gameOverScreen.classList.add('hidden');
-            startGame();
-        }
-
-        function spawnEnemy() {
-            if (isGameOver || isPaused) return;
-
-            const size = 30 + Math.random() * 20;
-            enemies.push({
-                x: Math.random() * (canvas.width - size),
-                y: -50,
-                width: size,
-                height: size,
-                speed: CONFIG.enemySpeedBase + (score / 500), // Get harder over time
-                hp: 1 + Math.floor(score / 1000)
             });
+            return data;
+        };
 
-            // Randomize spawn rate based on difficulty
-            const nextSpawn = Math.max(400, CONFIG.enemySpawnRate - (score / 2));
-            setTimeout(spawnEnemy, nextSpawn);
-        }
-
-        /**
-         * Input Handling
-         */
-        function setupInput() {
-            // Keyboard
-            window.addEventListener('keydown', (e) => {
-                if (e.code === 'ArrowLeft') keys.ArrowLeft = true;
-                if (e.code === 'ArrowRight') keys.ArrowRight = true;
-                if (e.code === 'Space') {
-                    keys.Space = true;
-                    tryShoot();
-                }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                if (e.code === 'ArrowLeft') keys.ArrowLeft = false;
-                if (e.code === 'ArrowRight') keys.ArrowRight = false;
-                if (e.code === 'Space') keys.Space = false;
-            });
-
-            // Touch / Mouse (Mobile Buttons)
-            const bindTouch = (id, key) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                
-                const start = (e) => { e.preventDefault(); keys[key] = true; if(key==='Space') tryShoot(); };
-                const end = (e) => { e.preventDefault(); keys[key] = false; };
-
-                el.addEventListener('mousedown', start);
-                el.addEventListener('mouseup', end);
-                el.addEventListener('mouseleave', end);
-                el.addEventListener('touchstart', start, {passive: false});
-                el.addEventListener('touchend', end, {passive: false});
+        const createItem = (id, legId, title, keyword, phase) => {
+            return {
+                id, leg: legId, title: `${title} /// ${keyword}`, keyword, phase,
+                hook: "이 글을 읽지 않으면 100만 원 손해볼 수 있습니다. 전문가의 조언을 확인하세요.",
+                body: "독자의 공포심을 자극하고 해결책을 제시하세요. 법적 근거(제O조)를 명시하여 신뢰를 높이세요.",
+                seo: `${keyword}, ${keyword}비용, ${keyword}절차`,
+                cpa: legId === 'Debt' ? '개인회생 무료 조회' : '무료 법률 상담',
+                published: false, url: '', affiliateUrl: ''
             };
+        };
 
-            bindTouch('btnLeft', 'ArrowLeft');
-            bindTouch('btnRight', 'ArrowRight');
-            bindTouch('btnFire', 'Space');
-        }
+        let db = generateDb();
+        const STORAGE_KEY = 'lawgear_pacemaker_v1';
 
-        function tryShoot() {
-            if (isPaused || isGameOver) return;
-            
-            const now = Date.now();
-            if (now - lastShotTime > 200) { // Fire rate limit
-                bullets.push({
-                    x: player.x + player.width / 2 - 2,
-                    y: player.y,
-                    width: 4,
-                    height: 15,
-                    color: CONFIG.colors.bullet
+        function init() { loadData(); updateUI(); }
+        
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const savedData = JSON.parse(saved);
+                savedData.forEach(s => {
+                    const item = db.find(d => d.id === s.id);
+                    if (item) { item.published = s.published; item.url = s.url; item.affiliateUrl = s.affiliateUrl; }
                 });
-                lastShotTime = now;
-                createParticles(player.x + player.width/2, player.y, CONFIG.colors.bullet, 3);
             }
         }
 
-        /**
-         * Game Logic
-         */
-        function update(dt) {
-            if (isPaused || isGameOver) {
-                updateBackground();
-                return;
-            }
-
-            // Move Player
-            if (keys.ArrowLeft && player.x > 0) player.x -= CONFIG.playerSpeed;
-            if (keys.ArrowRight && player.x < canvas.width - player.width) player.x += CONFIG.playerSpeed;
-
-            // Move Bullets
-            bullets.forEach((b, i) => {
-                b.y -= CONFIG.bulletSpeed;
-                if (b.y < -50) bullets.splice(i, 1);
-            });
-
-            // Move Enemies
-            enemies.forEach((e, i) => {
-                e.y += e.speed;
-
-                // Collision with Player
-                if (rectIntersect(player, e)) {
-                    takeDamage();
-                    enemies.splice(i, 1);
-                    createParticles(e.x + e.width/2, e.y + e.height/2, CONFIG.colors.enemy, 20);
-                }
-                // Off screen
-                else if (e.y > canvas.height) {
-                    enemies.splice(i, 1);
-                    score = Math.max(0, score - 50); // Penalty for missing
-                    updateUI();
-                }
-            });
-
-            // Bullet Hits Enemy
-            bullets.forEach((b, bi) => {
-                enemies.forEach((e, ei) => {
-                    if (rectIntersect(b, e)) {
-                        createParticles(e.x + e.width/2, e.y + e.height/2, CONFIG.colors.enemy, 8);
-                        bullets.splice(bi, 1);
-                        e.hp--;
-                        if (e.hp <= 0) {
-                            enemies.splice(ei, 1);
-                            score += 100;
-                            updateUI();
-                        }
-                    }
-                });
-            });
-
-            // Update Particles
-            particles.forEach((p, i) => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
-                if (p.life <= 0) particles.splice(i, 1);
-            });
-
-            updateBackground();
-        }
-
-        function updateBackground() {
-            stars.forEach(star => {
-                star.y += star.speed;
-                if (star.y > canvas.height) {
-                    star.y = 0;
-                    star.x = Math.random() * canvas.width;
-                }
-            });
-        }
-
-        function takeDamage() {
-            lives--;
+        function saveData() {
+            const dataToSave = db.filter(d => d.published).map(d => ({ id: d.id, published: d.published, url: d.url, affiliateUrl: d.affiliateUrl }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
             updateUI();
-            
-            // Screen shake effect (visual only, simple implementation)
-            canvas.style.transform = `translate(${Math.random()*10-5}px, ${Math.random()*10-5}px)`;
-            setTimeout(() => canvas.style.transform = 'none', 100);
-
-            if (lives <= 0) {
-                endGame();
-            }
         }
 
-        function endGame() {
-            isGameOver = true;
-            const finalScoreEl = document.getElementById('finalScore');
-            const gameOverScreen = document.getElementById('gameOverScreen');
-            
-            if (finalScoreEl) finalScoreEl.innerText = score;
-            if (gameOverScreen) gameOverScreen.classList.remove('hidden');
-        }
-
-        /**
-         * The Fixed updateUI function
-         * Includes null checks to prevent crashes
-         */
         function updateUI() {
-            // Guard clauses: Check if elements exist before setting properties
-            const scoreEl = document.getElementById('scoreDisplay');
-            const livesEl = document.getElementById('livesDisplay');
+            // Null check helper
+            const setSafe = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+            const styleSafe = (id, width) => { const el = document.getElementById(id); if(el) el.style.width = width; };
 
-            if (scoreEl) {
-                scoreEl.innerText = score.toString().padStart(6, '0');
-            }
+            const total = db.length;
+            const done = db.filter(d => d.published).length;
+            const pct = Math.round((done / total) * 100);
+            
+            // Global Nav
+            styleSafe('globalProgressBar', `${pct}%`);
+            setSafe('globalProgressText', `${pct}%`);
 
-            if (livesEl) {
-                // Convert lives to hearts
-                livesEl.innerText = '❤️'.repeat(Math.max(0, lives));
-            }
-        }
+            // Dashboard View
+            setSafe('totalPublishedCount', done);
+            setSafe('remainingCount', total - done);
 
-        /**
-         * Rendering
-         */
-        function draw() {
-            // Clear Screen
-            ctx.fillStyle = CONFIG.colors.bg || '#0f172a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Stars
-            ctx.fillStyle = '#ffffff';
-            stars.forEach(star => {
-                ctx.globalAlpha = Math.random() * 0.5 + 0.3;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-                ctx.fill();
+            legs.forEach(leg => {
+                const legDone = db.filter(d => d.leg === leg.id && d.published).length;
+                setSafe(`stat-${leg.id.toLowerCase()}`, `${legDone}/40`);
             });
-            ctx.globalAlpha = 1.0;
 
-            // Draw Player
-            if (!isGameOver) {
-                ctx.fillStyle = CONFIG.colors.player;
-                ctx.beginPath();
-                ctx.moveTo(player.x + player.width / 2, player.y);
-                ctx.lineTo(player.x + player.width, player.y + player.height);
-                ctx.lineTo(player.x, player.y + player.height);
-                ctx.closePath();
-                ctx.fill();
+            // Level & Money
+            let levelName = "초보 블로거", levelIcon = "fa-user", levelColor = "text-slate-400";
+            if (done >= 5) { levelName = "브론즈 (Bronze)"; levelIcon = "fa-medal"; levelColor = "text-amber-700"; }
+            if (done >= 20) { levelName = "실버 (Silver)"; levelIcon = "fa-medal"; levelColor = "text-slate-400"; }
+            if (done >= 50) { levelName = "골드 (Gold)"; levelIcon = "fa-trophy"; levelColor = "text-yellow-500"; }
+            if (done >= 100) { levelName = "다이아몬드 (Diamond)"; levelIcon = "fa-gem"; levelColor = "text-cyan-400"; }
+            if (done >= 150) { levelName = "마스터 (Master)"; levelIcon = "fa-crown"; levelColor = "text-indigo-600"; }
+
+            setSafe('currentLevelName', levelName);
+            const badge = document.getElementById('levelBadge');
+            if(badge) badge.innerHTML = `<i class="fa-solid ${levelIcon} ${levelColor}"></i>`;
+            setSafe('expText', `${done} / ${total} XP`);
+            styleSafe('levelProgressBar', `${pct}%`);
+
+            let moneyScore = 0;
+            db.filter(d => d.published).forEach(d => {
+                if(d.leg === 'Debt') moneyScore += 5;
+                else if(d.leg === 'Traffic') moneyScore += 4;
+                else if(d.leg === 'Housing') moneyScore += 3;
+                else moneyScore += 2;
+            });
+            setSafe('moneyPowerScore', moneyScore);
+
+            // Recent
+            const recent = db.filter(d => d.published).slice(-5).reverse();
+            const recentList = document.getElementById('recentActivityList');
+            if (recentList) {
+                if (recent.length > 0) {
+                    recentList.innerHTML = recent.map(item => `
+                        <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                            <span class="truncate font-medium">${item.title.split('///')[0]}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    recentList.innerHTML = '<p class="text-xs text-slate-400 italic">아직 활동 내역이 없습니다.</p>';
+                }
+            }
+
+            // Next Mission
+            const nextItem = db.sort((a, b) => a.phase - b.phase).find(d => !d.published);
+            if (nextItem) {
+                setSafe('nextMissionTitle', nextItem.title.split('///')[0]);
+                setSafe('nextMissionHook', `"${nextItem.hook}"`);
+                const nextLegEl = document.getElementById('nextMissionLeg');
+                if(nextLegEl) nextLegEl.innerText = nextItem.leg.toUpperCase();
                 
-                // Engine glow
-                ctx.fillStyle = '#f59e0b';
-                ctx.beginPath();
-                ctx.moveTo(player.x + player.width / 2 - 5, player.y + player.height);
-                ctx.lineTo(player.x + player.width / 2 + 5, player.y + player.height);
-                ctx.lineTo(player.x + player.width / 2, player.y + player.height + (Math.random() * 15 + 5));
-                ctx.fill();
+                const phaseNames = ["기초 공사", "트래픽 폭발", "신뢰 구축", "수익 사냥"];
+                const phaseEl = document.getElementById('currentPhaseTitle');
+                if(phaseEl) phaseEl.innerHTML = `Lv.${nextItem.phase} ${phaseNames[nextItem.phase-1]}`;
+            } else {
+                setSafe('currentPhaseTitle', "🎉 마스터(Master)");
+                setSafe('nextMissionTitle', "완료!");
+                setSafe('nextMissionHook', "모든 퀘스트를 완료했습니다!");
             }
 
-            // Draw Enemies
-            ctx.fillStyle = CONFIG.colors.enemy;
-            enemies.forEach(e => {
-                ctx.fillRect(e.x, e.y, e.width, e.height);
-                // Simple detail
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.fillRect(e.x + 5, e.y + 5, e.width - 10, e.height - 10);
-                ctx.fillStyle = CONFIG.colors.enemy;
-            });
-
-            // Draw Bullets
-            ctx.fillStyle = CONFIG.colors.bullet;
-            bullets.forEach(b => {
-                ctx.fillRect(b.x, b.y, b.width, b.height);
-            });
-
-            // Draw Particles
-            particles.forEach(p => {
-                ctx.fillStyle = p.color || CONFIG.colors.particle;
-                ctx.globalAlpha = p.life / CONFIG.particleLife;
-                ctx.fillRect(p.x, p.y, p.size, p.size);
-            });
-            ctx.globalAlpha = 1.0;
+            renderRoadmap();
+            renderFullLibrary();
+            renderCharts();
         }
 
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+        // --- VIEWS ---
+        function switchView(viewId) {
+            ['dashboard', 'roadmap', 'library', 'settings'].forEach(v => {
+                const el = document.getElementById(`${v}-view`);
+                if(el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(`${viewId}-view`);
+            if(target) target.classList.remove('hidden');
+            window.scrollTo(0,0);
         }
 
-        // Helpers
-        function createParticles(x, y, color, count) {
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x: x,
-                    y: y,
-                    vx: (Math.random() - 0.5) * 10,
-                    vy: (Math.random() - 0.5) * 10,
-                    life: CONFIG.particleLife,
-                    size: Math.random() * 4 + 1,
-                    color: color
+        function renderRoadmap() {
+            for(let i=1; i<=4; i++) {
+                const container = document.getElementById(`phase${i}-grid`);
+                if(!container) continue;
+                container.innerHTML = '';
+                
+                db.filter(d => d.phase === i).forEach(item => {
+                    const isDone = item.published;
+                    const legColor = item.leg === 'Traffic' ? 'amber' : item.leg === 'Debt' ? 'indigo' : item.leg === 'Housing' ? 'emerald' : 'rose';
+                    const el = document.createElement('div');
+                    el.className = `bg-white p-4 rounded-xl border ${isDone ? 'border-slate-200 opacity-60' : 'border-slate-200'} card-shadow card-hover relative group cursor-pointer`;
+                    if(!isDone) el.classList.add('border-l-4', `border-l-${legColor}-500`);
+                    
+                    el.onclick = () => openModal(item.id);
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-${legColor}-50 text-${legColor}-700 uppercase">${item.leg}</span>
+                            <div class="flex items-center gap-1">
+                                ${item.affiliateUrl ? '<span class="text-emerald-500 text-xs"><i class="fa-solid fa-dollar-sign"></i></span>' : ''}
+                                ${isDone ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>'}
+                            </div>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800 leading-snug ${isDone ? 'line-through text-slate-400' : ''}">${item.title.split('///')[0]}</h4>
+                    `;
+                    container.appendChild(el);
                 });
             }
         }
 
-        function rectIntersect(r1, r2) {
-            return !(r2.x > r1.x + r1.width || 
-                     r2.x + r2.width < r1.x || 
-                     r2.y > r1.y + r1.height || 
-                     r2.y + r2.height < r1.y);
+        function renderFullLibrary() {
+            const container = document.getElementById('fullLibraryGrid');
+            if(!container) return;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
+            
+            container.innerHTML = '';
+            
+            const filtered = db.filter(d => {
+                const matchSearch = d.title.toLowerCase().includes(search) || d.keyword.toLowerCase().includes(search);
+                const matchFilter = filter === 'all' ? true : (filter === d.leg || (filter === 'published' && d.published) || (filter === 'unpublished' && !d.published));
+                return matchSearch && matchFilter;
+            });
+
+            filtered.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "bg-white p-3 rounded-lg border border-slate-200 shadow-sm text-sm hover:border-indigo-300 cursor-pointer flex flex-col justify-between h-32";
+                el.onclick = () => openModal(item.id);
+                el.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-2 h-2 rounded-full ${item.published ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                            <span class="text-xs text-slate-400 font-bold uppercase">${item.leg}</span>
+                            ${item.affiliateUrl ? '<span class="text-emerald-500 text-xs ml-auto"><i class="fa-solid fa-dollar-sign"></i></span>' : ''}
+                        </div>
+                        <p class="font-medium text-slate-800 line-clamp-2">${item.title.split('///')[0]}</p>
+                    </div>
+                    <div class="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded w-fit mt-2">Lv.${item.phase}</div>
+                `;
+                container.appendChild(el);
+            });
         }
 
+        function filterLibrary(filterType) {
+            switchView('library');
+            const btns = document.querySelectorAll('.filter-btn');
+            btns.forEach(b => {
+                if(b.dataset.filter === filterType) b.click();
+            });
+        }
+
+        // --- CHARTS ---
+        function renderCharts() {
+            const ctx = document.getElementById('radarChart')?.getContext('2d');
+            if(ctx) {
+                if(window.myRadar) window.myRadar.destroy();
+                window.myRadar = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['수익성', '접근성', '긴급성', '확장성', '난이도'],
+                        datasets: [
+                            { label: 'Traffic', data: [4,5,4,5,2], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)' },
+                            { label: 'Debt', data: [5,3,5,4,4], borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.2)' },
+                            { label: 'Housing', data: [3,5,3,4,2], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.2)' },
+                            { label: 'Crime', data: [2,4,5,3,3], borderColor: '#f43f5e', backgroundColor: 'rgba(244,63,94,0.2)' }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            const sunburstEl = document.getElementById('sunburstChart');
+            if(sunburstEl) {
+                const data = [{
+                    type: "sunburst",
+                    labels: ["Law Gear", "Traffic", "Debt", "Housing", "Crime"],
+                    parents: ["", "Law Gear", "Law Gear", "Law Gear", "Law Gear"],
+                    values: [160, 40, 40, 40, 40],
+                    outsidetextfont: {size: 14, color: "#377eb8"},
+                    marker: {colors: ["#1e293b", "#f59e0b", "#4f46e5", "#10b981", "#f43f5e"]}
+                }];
+                Plotly.newPlot('sunburstChart', data, {margin: {l:0, r:0, b:0, t:0}}, {responsive: true});
+            }
+        }
+
+        // --- UTILS & MODAL ---
+        let currentModalId = null;
+        function openModal(id) {
+            currentModalId = id;
+            const item = db.find(d => d.id === id);
+            if(!item) return;
+            
+            const legColor = item.leg === 'Traffic' ? 'bg-amber-500' : item.leg === 'Debt' ? 'bg-indigo-500' : item.leg === 'Housing' ? 'bg-emerald-500' : 'bg-rose-500';
+            const mLeg = document.getElementById('m-leg'); if(mLeg) { mLeg.className = `px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-white ${legColor}`; mLeg.innerText = item.leg; }
+            const mPhase = document.getElementById('m-phase'); if(mPhase) mPhase.innerText = `LV.${item.phase}`;
+            const mTitle = document.getElementById('m-title'); if(mTitle) mTitle.innerText = item.title.split('///')[0];
+            const mCopy = document.getElementById('m-copy-text'); if(mCopy) mCopy.innerText = item.title;
+            const mKey = document.getElementById('m-keyword'); if(mKey) mKey.innerText = item.keyword;
+            const mHook = document.getElementById('m-hook'); if(mHook) mHook.innerText = `"${item.hook}"`;
+            const mBody = document.getElementById('m-body'); if(mBody) mBody.innerText = item.body;
+
+            const chk = document.getElementById('m-published-check');
+            const urlSec = document.getElementById('m-url-section');
+            if(chk) chk.checked = item.published;
+            if(urlSec) {
+                if(item.published) urlSec.classList.remove('hidden');
+                else urlSec.classList.add('hidden');
+            }
+            
+            const mUrl = document.getElementById('m-url-input'); if(mUrl) mUrl.value = item.url || '';
+            const mAff = document.getElementById('m-affiliate-input'); if(mAff) mAff.value = item.affiliateUrl || '';
+
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modalContent');
+            if(modal) modal.classList.remove('hidden');
+            if(content) setTimeout(() => content.classList.remove('scale-95'), 10);
+        }
+
+        function closeModal() {
+            const content = document.getElementById('modalContent');
+            const modal = document.getElementById('modal');
+            if(content) content.classList.add('scale-95');
+            if(modal) setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function togglePublishStatus() {
+            const chk = document.getElementById('m-published-check');
+            const urlSec = document.getElementById('m-url-section');
+            const item = db.find(d => d.id === currentModalId);
+            
+            if (chk && item) {
+                if (chk.checked) {
+                    if(urlSec) urlSec.classList.remove('hidden');
+                    item.published = true;
+                } else {
+                    if(urlSec) urlSec.classList.add('hidden');
+                    item.published = false;
+                }
+                saveData();
+            }
+        }
+
+        function savePostDetails() {
+            const item = db.find(d => d.id === currentModalId);
+            if(item) {
+                const u = document.getElementById('m-url-input');
+                const a = document.getElementById('m-affiliate-input');
+                if(u) item.url = u.value;
+                if(a) item.affiliateUrl = a.value;
+                saveData();
+            }
+        }
+
+        function openNextMission() {
+            const next = db.sort((a, b) => a.phase - b.phase).find(d => !d.published);
+            if(next) openModal(next.id);
+        }
+
+        function sendToTelegram(event) {
+            event.stopPropagation();
+            const next = db.sort((a, b) => a.phase - b.phase).find(d => !d.published);
+            if(!next) return alert("완료!");
+            const msg = `[Law Gear 미션]\n🔥 Lv.${next.phase}\n제목: ${next.title.split('///')[0]}\n키워드: ${next.keyword}\n공략: ${next.body}`;
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function copyToClipboard(id) {
+            navigator.clipboard.writeText(document.getElementById(id).innerText).then(() => alert('복사완료'));
+        }
+
+        function resetData() {
+            if(confirm('정말 모든 데이터를 초기화하시겠습니까? (복구 불가)')) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        }
+
+        function exportData() {
+            const dataToSave = db.filter(d => d.published).map(d => ({ id: d.id, published: d.published, url: d.url, affiliateUrl: d.affiliateUrl }));
+            const blob = new Blob([JSON.stringify(dataToSave)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `lawgear_data.json`;
+            a.click();
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = e => {
+                const loaded = JSON.parse(e.target.result);
+                loaded.forEach(s => {
+                    const item = db.find(d => d.id === s.id);
+                    if(item) { item.published = s.published; item.url = s.url; item.affiliateUrl = s.affiliateUrl; }
+                });
+                saveData();
+                alert('복원 완료');
+            };
+            reader.readAsText(file);
+        }
+
+        // Filters
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-slate-800', 'text-white');
+                    b.classList.add('bg-white', 'text-slate-600');
+                    b.classList.remove('active');
+                });
+                e.target.classList.remove('bg-white', 'text-slate-600');
+                e.target.classList.add('bg-slate-800', 'text-white', 'active');
+                renderFullLibrary();
+            });
+        });
+        const searchInput = document.getElementById('searchInput');
+        if(searchInput) searchInput.addEventListener('input', renderFullLibrary);
+
+        init();
     </script>
 </body>
 </html>
